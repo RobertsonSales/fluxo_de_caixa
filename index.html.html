@@ -1,0 +1,2083 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Análise de Fluxo de Caixa - Receitas vs Despesas</title>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.3/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .upload-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            border: 2px dashed #667eea;
+        }
+
+        .upload-section h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .file-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .file-input-group {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .file-input-group label {
+            display: block;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+        }
+
+        .file-input-group input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .file-input-group input[type="file"]:hover {
+            border-color: #667eea;
+        }
+
+        .file-status {
+            margin-top: 10px;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            display: none;
+        }
+
+        .file-status.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+
+        .file-status.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+
+        .filter-section {
+            background: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .filter-section h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .filter-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .filter-group label {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 8px;
+        }
+
+        .filter-group input,
+        .filter-group select {
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+
+        .filter-group input:focus,
+        .filter-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.6);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+            margin-left: 10px;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+            transform: translateY(-2px);
+        }
+
+        .results-section {
+            display: none;
+        }
+
+        .results-section.active {
+            display: block;
+        }
+
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 180px;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .card-receitas {
+            border-left: 5px solid #28a745;
+        }
+
+        .card-despesas {
+            border-left: 5px solid #dc3545;
+        }
+
+        .card-saldo {
+            border-left: 5px solid #667eea;
+        }
+
+        .card-liquidez {
+            border-left: 5px solid #ffc107;
+        }
+
+        .card-faturado {
+            border-left: 5px solid #17a2b8;
+        }
+
+        .card-inadimplencia {
+            border-left: 5px solid #dc3545;
+        }
+
+        .card-liquidado-same {
+            border-left: 5px solid #28a745;
+        }
+
+        .card-liquidado-other {
+            border-left: 5px solid #667eea;
+        }
+
+        .card-aporte {
+            border-left: 5px solid #ffc107;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-icon {
+            font-size: 2.2em;
+            margin-right: 15px;
+        }
+
+        .card-title {
+            font-size: 0.85em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .card-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            white-space: nowrap;
+            line-height: 1.2;
+        }
+
+        .card-detail {
+            font-size: 0.85em;
+            color: #888;
+            line-height: 1.3;
+        }
+
+        .insights-section {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .insights-section h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .insight-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .insight-item strong {
+            color: #667eea;
+        }
+
+        .chart-container {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .chart-container h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.5em;
+        }
+
+        .daily-list {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .daily-list h3 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .daily-item {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            border-left: 5px solid #667eea;
+            cursor: pointer;
+        }
+
+        .daily-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .daily-date {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .daily-values {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+        }
+
+        .daily-value-item {
+            text-align: center;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+        }
+
+        .daily-value-label {
+            font-size: 0.85em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .daily-value-amount {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+
+        .value-positive {
+            color: #28a745;
+        }
+
+        .value-negative {
+            color: #dc3545;
+        }
+
+        .value-neutral {
+            color: #667eea;
+        }
+
+        .export-section {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .file-inputs {
+                grid-template-columns: 1fr;
+            }
+            
+            .summary-cards {
+                grid-template-columns: 1fr;
+            }
+            
+            .daily-values {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .period-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+
+        .debug-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 12px;
+            display: none;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            padding-top: 60px;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            margin: 5% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 1200px;
+            border-radius: 10px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+            cursor: pointer;
+        }
+
+        #pdfPreview {
+            width: 100%;
+            height: 500px;
+            border: none;
+        }
+
+        .company-select {
+            margin-bottom: 20px;
+        }
+
+        .company-select label {
+            margin-right: 10px;
+        }
+
+        .records-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 0.85em;
+        }
+
+        .records-table th, .records-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        .records-table th {
+            background-color: #667eea;
+            color: white;
+        }
+
+        .records-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .pdf-header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+        }
+
+        .pdf-section {
+            margin-bottom: 25px;
+        }
+
+        .pdf-section-title {
+            background-color: #667eea;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-size: 1.2em;
+        }
+
+        .pdf-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #f9f9f9;
+        }
+
+        .pdf-card-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        .pdf-card-value {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .pdf-table-container {
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+
+        .top-list {
+            list-style: none;
+            padding: 0;
+            margin-bottom: 10px;
+        }
+
+        .top-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💼 Análise de Fluxo de Caixa</h1>
+            <p>Análise comparativa entre Receitas e Despesas</p>
+        </div>
+
+        <div class="content">
+            <div class="upload-section">
+                <h2>📁 Importar Planilhas</h2>
+                <div class="file-inputs">
+                    <div class="file-input-group">
+                        <label for="receitasFile">Planilha de Receitas</label>
+                        <input type="file" id="receitasFile" accept=".xlsx,.xls,.csv" />
+                        <div id="receitasStatus" class="file-status"></div>
+                    </div>
+                    <div class="file-input-group">
+                        <label for="despesasFile">Planilha de Despesas</label>
+                        <input type="file" id="despesasFile" accept=".xlsx,.xls,.csv" />
+                        <div id="despesasStatus" class="file-status"></div>
+                    </div>
+                </div>
+                <div class="debug-info" id="debugInfo"></div>
+            </div>
+
+            <div class="filter-section">
+                <h3>🔍 Selecionar Período de Análise</h3>
+                <div class="filter-options">
+                    <div class="filter-group">
+                        <label for="filterType">Tipo de Filtro</label>
+                        <select id="filterType">
+                            <option value="period">Período entre datas</option>
+                            <option value="month" selected>Competência (mês/ano)</option>
+                        </select>
+                    </div>
+                    <div class="filter-group" id="monthFilterGroup">
+                        <label for="monthFilter">Mês/Ano</label>
+                        <input type="month" id="monthFilter" />
+                    </div>
+                    <div class="filter-group" id="startDateGroup" style="display: none;">
+                        <label for="startDate">Data Inicial</label>
+                        <input type="date" id="startDate" />
+                    </div>
+                    <div class="filter-group" id="endDateGroup" style="display: none;">
+                        <label for="endDate">Data Final</label>
+                        <input type="date" id="endDate" />
+                    </div>
+                </div>
+
+                <div class="company-select">
+                    <h3>Selecionar Empresas</h3>
+                    <div id="companiesList" class="filter-options"></div>
+                    <label><input type="checkbox" id="selectAllCompanies"> Selecionar Todas</label>
+                </div>
+
+                <button id="analyzeBtn" class="btn btn-primary">Analisar Dados</button>
+                <button id="resetBtn" class="btn btn-secondary">Limpar Filtros</button>
+            </div>
+
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Processando dados...</p>
+            </div>
+
+            <div id="resultsSection" class="results-section">
+                <div id="periodBadge" class="period-badge"></div>
+                <div id="summaryCards" class="summary-cards"></div>
+                
+                <button id="viewCardsModalBtn" class="btn btn-primary">Ver Resumo em Modal</button>
+                
+                <div id="insightsSection" class="insights-section"></div>
+
+                <div id="topSummary" class="summary-cards"></div>
+                
+                <div class="chart-container">
+                    <h3>📊 Evolução do Fluxo de Caixa</h3>
+                    <canvas id="flowChart"></canvas>
+                </div>
+                
+                <div id="dailyList" class="daily-list"></div>
+                
+                <div class="export-section">
+                    <button id="previewPdfBtn" class="btn btn-primary">Visualizar PDF Global</button>
+                    <button id="exportPdfBtn" class="btn btn-primary">Exportar para PDF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="cardsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('cardsModal')">&times;</span>
+            <div id="modalSummaryCards" class="summary-cards"></div>
+            <div id="modalDailyList" class="daily-list"></div>
+            <button id="exportCardsPdfBtn" class="btn btn-primary">Salvar Resumo em PDF</button>
+        </div>
+    </div>
+
+    <div id="dailyModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('dailyModal')">&times;</span>
+            <div id="modalDailySummary"></div>
+            <h3>Registros de 
+
+</h3>
+            <div class="pdf-table-container">
+                <table id="receitasTable" class="records-table">
+                    <thead>
+                        <tr>
+                            <th>Cliente</th>
+                            <th>Descrição</th>
+                            <th>Vencimento</th>
+                            <th>Liquidação</th>
+                            <th>Valor</th>
+                            <th>Empresa</th>
+                            <th>Vendedor</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <h3>Registros de Despesas</h3>
+            <div class="pdf-table-container">
+                <table id="despesasTable" class="records-table">
+                    <thead>
+                        <tr>
+                            <th>Credor/Fornecedor</th>
+                            <th>Descrição</th>
+                            <th>Vencimento</th>
+                            <th>Quitação</th>
+                            <th>Valor</th>
+                            <th>Empresa</th>
+                            <th>Natureza</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <button id="exportDailyPdfBtn" class="btn btn-primary">Salvar Detalhe em PDF</button>
+        </div>
+    </div>
+
+    <div id="pdfPreviewModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('pdfPreviewModal')">&times;</span>
+            <iframe id="pdfPreview" src=""></iframe>
+            <button id="downloadPreviewPdfBtn" class="btn btn-primary">Baixar PDF</button>
+        </div>
+    </div>
+
+    <script>
+        let receitasData = null;
+        let despesasData = null;
+        let chartInstance = null;
+        let selectedCompanies = [];
+        let uniqueCompanies = [];
+        let currentDados = null;
+        let currentPeriod = { start: null, end: null };
+        let receitasIs1904 = false;
+        let despesasIs1904 = false;
+
+        let currentDailyItem = null; // Para armazenar o item diário atual no modal
+
+        // Função para converter serial do Excel para data - CORRIGIDA
+        function excelToDateLocal(serial, is1904 = false) {
+            if (typeof serial !== 'number' || isNaN(serial) || serial <= 0) {
+                return null;
+            }
+
+            let adjustedSerial = serial;
+
+            if (is1904) {
+                adjustedSerial += 1462;
+            }
+
+            // Ajuste para o bug do Excel (considera 1900 como ano bissexto)
+            const utc_days = Math.floor(adjustedSerial - 25569);
+            const utc_milliseconds = utc_days * 86400000;
+            
+            // Cria a data UTC
+            const utc_date = new Date(utc_milliseconds);
+            
+            // Converte para fuso horário local
+            const localDate = new Date(
+                utc_date.getUTCFullYear(),
+                utc_date.getUTCMonth(),
+                utc_date.getUTCDate(),
+                0, 0, 0, 0
+            );
+
+            return localDate;
+        }
+
+        // Normaliza qualquer data para início do dia local - CORRIGIDA
+        function normalizarData(date) {
+            if (!date) return null;
+            return new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
+        }
+
+        // Função para formatar data como string YYYY-MM-DD local - CORRIGIDA
+        function dateToLocalString(date) {
+            if (!date) return '';
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        // Função para parsear números no formato brasileiro
+        function parseBrazilianNumber(value) {
+            if (typeof value === 'number') return value;
+            if (!value) return 0;
+            let str = String(value).trim();
+            str = str.replace(/R\$/g, '').trim();
+            str = str.replace(/\./g, '');
+            str = str.replace(',', '.');
+            const num = parseFloat(str);
+            return isNaN(num) ? 0 : num;
+        }
+
+        document.getElementById('receitasFile').addEventListener('change', (e) => processarArquivo(e.target.files[0], 'receitas'));
+        document.getElementById('despesasFile').addEventListener('change', (e) => processarArquivo(e.target.files[0], 'despesas'));
+
+        function processarArquivo(file, tipo) {
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = e.target.result;
+                try {
+                    const workbook = XLSX.read(data, { 
+                        type: 'array', 
+                        cellDates: false, // Importante: receber como serial numérico
+                        raw: true 
+                    });
+                    
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    let jsonData;
+
+                    // Verifica se a planilha usa calendário 1904 (comum em Excel para Mac)
+                    const is1904 = (workbook.WBProps && workbook.WBProps.date1904) || false;
+
+                    if (tipo === 'receitas') {
+                        jsonData = XLSX.utils.sheet_to_json(sheet, { 
+                            header: ['CLIENTE', 'VENCIMENTO', 'DESCRIÇÃO', 'VALOR', 'LIQUIDAÇÃO', 'VENDEDOR', 'COMISSÃO', 'EMPRESA'], 
+                            range: 1,
+                            raw: true // Mantém valores originais
+                        });
+                        receitasData = jsonData;
+                        receitasIs1904 = is1904;
+                        
+                        // Debug: mostra informações sobre as datas carregadas
+                        console.log(`Receitas carregadas: ${jsonData.length} registros`);
+                        console.log('Primeiros 3 registros (LIQUIDAÇÃO):', jsonData.slice(0, 3).map(r => ({
+                            cliente: r.CLIENTE,
+                            liquidacao_serial: r.LIQUIDAÇÃO,
+                            liquidacao_convertida: excelToDateLocal(r.LIQUIDAÇÃO, is1904)
+                        })));
+                        
+                        atualizarStatus('receitasStatus', 'success', `Planilha de receitas carregada: ${jsonData.length} registros!`);
+                    } else {
+                        jsonData = XLSX.utils.sheet_to_json(sheet, { 
+                            header: ['CREDOR/FORNECEDOR', 'VENCTO', 'DESCRIÇÃO', 'VALOR', 'QUITAÇÃO', 'BANCO', 'NATUREZA', 'EMPRESA'], 
+                            range: 1,
+                            raw: true
+                        });
+                        despesasData = jsonData;
+                        despesasIs1904 = is1904;
+                        
+                        // Debug: mostra informações sobre as datas carregadas
+                        console.log(`Despesas carregadas: ${jsonData.length} registros`);
+                        console.log('Primeiros 3 registros (QUITAÇÃO):', jsonData.slice(0, 3).map(d => ({
+                            credor: d['CREDOR/FORNECEDOR'],
+                            quitacao_serial: d['QUITAÇÃO'],
+                            quitacao_convertida: excelToDateLocal(d['QUITAÇÃO'], is1904)
+                        })));
+                        
+                        atualizarStatus('despesasStatus', 'success', `Planilha de despesas carregada: ${jsonData.length} registros!`);
+                    }
+
+                    if (receitasData && despesasData) {
+                        extractUniqueCompanies();
+                    }
+                } catch (error) {
+                    console.error('Erro detalhado ao processar planilha:', error);
+                    atualizarStatus(tipo === 'receitas' ? 'receitasStatus' : 'despesasStatus', 'error', `Erro ao carregar planilha: ${error.message}`);
+                }
+            };
+            reader.onerror = (error) => {
+                console.error('Erro ao ler arquivo:', error);
+                atualizarStatus(tipo === 'receitas' ? 'receitasStatus' : 'despesasStatus', 'error', `Erro ao ler arquivo: ${error}`);
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function extractUniqueCompanies() {
+            const allData = [...receitasData, ...despesasData];
+            uniqueCompanies = [...new Set(allData.map(row => row.EMPRESA).filter(emp => emp))];
+            renderCompanyCheckboxes();
+        }
+
+        function renderCompanyCheckboxes() {
+            const companiesList = document.getElementById('companiesList');
+            companiesList.innerHTML = '';
+            uniqueCompanies.forEach(emp => {
+                const div = document.createElement('div');
+                div.className = 'filter-group';
+                div.innerHTML = `<label><input type="checkbox" class="company-checkbox" value="${emp}" checked> ${emp}</label>`;
+                companiesList.appendChild(div);
+            });
+
+            document.getElementById('selectAllCompanies').checked = true;
+            document.getElementById('selectAllCompanies').addEventListener('change', (e) => {
+                document.querySelectorAll('.company-checkbox').forEach(cb => cb.checked = e.target.checked);
+            });
+        }
+
+        function atualizarStatus(id, classe, mensagem) {
+            const status = document.getElementById(id);
+            status.className = `file-status ${classe}`;
+            status.textContent = mensagem;
+            status.style.display = 'block';
+        }
+
+        document.getElementById('filterType').addEventListener('change', (e) => {
+            const isMonth = e.target.value === 'month';
+            document.getElementById('monthFilterGroup').style.display = isMonth ? 'block' : 'none';
+            document.getElementById('startDateGroup').style.display = isMonth ? 'none' : 'block';
+            document.getElementById('endDateGroup').style.display = isMonth ? 'none' : 'block';
+        });
+
+        document.getElementById('analyzeBtn').addEventListener('click', processarAnalise);
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            document.getElementById('monthFilter').value = '';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('resultsSection').classList.remove('active');
+            document.querySelectorAll('.company-checkbox').forEach(cb => cb.checked = true);
+            document.getElementById('selectAllCompanies').checked = true;
+        });
+
+        function processarAnalise() {
+            if (!receitasData || !despesasData) {
+                alert('Por favor, carregue ambas as planilhas.');
+                return;
+            }
+
+            selectedCompanies = Array.from(document.querySelectorAll('.company-checkbox:checked')).map(cb => cb.value);
+            if (selectedCompanies.length === 0) {
+                alert('Selecione pelo menos uma empresa.');
+                return;
+            }
+
+            document.getElementById('loading').classList.add('active');
+
+            const filterType = document.getElementById('filterType').value;
+            let startDate, endDate;
+
+            if (filterType === 'month') {
+                const monthValue = document.getElementById('monthFilter').value;
+                if (!monthValue) {
+                    document.getElementById('loading').classList.remove('active');
+                    return alert('Selecione o mês/ano.');
+                }
+                const [year, month] = monthValue.split('-');
+                // Cria primeiro dia do mês
+                startDate = new Date(parseInt(year), parseInt(month) - 1, 1, 0, 0, 0, 0);
+                // Cria último dia do mês (dia 0 do mês seguinte = último dia do mês anterior)
+                endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59, 999);
+            } else {
+                const startVal = document.getElementById('startDate').value;
+                const endVal = document.getElementById('endDate').value;
+                if (!startVal || !endVal) {
+                    document.getElementById('loading').classList.remove('active');
+                    return alert('Selecione datas válidas.');
+                }
+                // CORREÇÃO: Cria datas do input e normaliza
+                startDate = new Date(startVal + 'T00:00:00');
+                endDate = new Date(endVal + 'T23:59:59.999');
+            }
+
+            // Garante que as datas de filtro estejam normalizadas
+            startDate = normalizarData(startDate);
+            startDate.setHours(0, 0, 0, 0);
+            
+            endDate = normalizarData(endDate);
+            endDate.setHours(23, 59, 59, 999);
+
+            console.log('Período de filtro:', {
+                inicio: startDate.toISOString(),
+                fim: endDate.toISOString(),
+                inicio_timestamp: startDate.getTime(),
+                fim_timestamp: endDate.getTime()
+            });
+
+            currentPeriod = { start: startDate, end: endDate };
+
+            const dados = calcularDados(startDate, endDate);
+            currentDados = dados;
+            renderizarResultados(dados);
+
+            document.getElementById('loading').classList.remove('active');
+            document.getElementById('resultsSection').classList.add('active');
+        }
+
+        function calcularDados(startDate, endDate) {
+            console.log('=== INÍCIO DO CÁLCULO DE DADOS ===');
+            console.log('Período:', dateToLocalString(startDate), 'até', dateToLocalString(endDate));
+            
+            let totalReceitas = 0, totalDespesas = 0;
+            let totalFaturado = 0;
+            let totalLiquidadoSame = 0;
+            let totalLiquidadoOther = 0;
+            let inadimplencia = 0;
+            
+            let companiesSummary = selectedCompanies.reduce((acc, emp) => {
+                acc[emp] = { totalReceitas: 0, totalDespesas: 0, saldo: 0 };
+                return acc;
+            }, {});
+            
+            // ===== FILTRAGEM DE RECEITAS =====
+            console.log('\n--- Filtrando RECEITAS ---');
+            console.log('Total de registros de receitas:', receitasData.length);
+            
+            const receitasFiltradas = receitasData.filter((row, index) => {
+                const dataLiq = excelToDateLocal(row.LIQUIDAÇÃO, receitasIs1904);
+                
+                // Debug dos primeiros 5 registros
+                if (index < 5) {
+                    console.log(`Receita ${index}:`, {
+                        cliente: row.CLIENTE,
+                        liquidacao_serial: row.LIQUIDAÇÃO,
+                        liquidacao_convertida: dataLiq,
+                        empresa: row.EMPRESA,
+                        selecionada: selectedCompanies.includes(row.EMPRESA),
+                        no_periodo: dataLiq && dataLiq >= startDate && dataLiq <= endDate
+                    });
+                }
+                
+                return dataLiq && 
+                       dataLiq >= startDate && 
+                       dataLiq <= endDate && 
+                       selectedCompanies.includes(row.EMPRESA);
+            });
+            
+            console.log('Receitas filtradas:', receitasFiltradas.length);
+            
+            // ===== CÁLCULO CORRETO DA INADIMPLÊNCIA =====
+            console.log('\n--- Calculando inadimplência ---');
+            
+            // Filtra receitas com vencimento no período (títulos emitidos na competência)
+            const receitasVencidasPeriodo = receitasData.filter(row => {
+                const dataVenc = excelToDateLocal(row.VENCIMENTO, receitasIs1904);
+                const empresaSelecionada = selectedCompanies.includes(row.EMPRESA);
+                
+                if (!dataVenc || !empresaSelecionada) return false;
+                
+                // Verifica se o vencimento está dentro do período selecionado
+                const vencimentoNoPeriodo = dataVenc >= startDate && dataVenc <= endDate;
+                
+                return vencimentoNoPeriodo;
+            });
+            
+            console.log('Receitas vencidas no período:', receitasVencidasPeriodo.length);
+            
+            // Filtra receitas quitadas no período
+            const receitasQuitadasPeriodo = receitasVencidasPeriodo.filter(row => {
+                const dataLiq = excelToDateLocal(row.LIQUIDAÇÃO, receitasIs1904);
+                
+                if (!dataLiq) return false;
+                
+                // Verifica se foi liquidada dentro do período
+                const liquidacaoNoPeriodo = dataLiq >= startDate && dataLiq <= endDate;
+                
+                return liquidacaoNoPeriodo;
+            });
+            
+            console.log('Receitas quitadas no período:', receitasQuitadasPeriodo.length);
+            
+            // Calcula o total faturado (títulos emitidos na competência)
+            receitasVencidasPeriodo.forEach(row => {
+                totalFaturado += parseBrazilianNumber(row.VALOR);
+            });
+            
+            // Calcula o total liquidado na mesma competência
+            receitasQuitadasPeriodo.forEach(row => {
+                totalLiquidadoSame += parseBrazilianNumber(row.VALOR);
+            });
+            
+            // A inadimplência é o total faturado menos o total liquidado na mesma competência
+            inadimplencia = totalFaturado - totalLiquidadoSame;
+            
+            console.log('Total Faturado:', totalFaturado);
+            console.log('Total Liquidado Same:', totalLiquidadoSame);
+            console.log('Inadimplência:', inadimplencia);
+            
+            // ===== CÁLCULO CORRETO DE LIQUIDAÇÃO DE OUTROS MESES =====
+            console.log('\n--- Calculando liquidação de outros meses ---');
+            
+            // Filtra receitas liquidadas no período mas com vencimento fora do período
+            const receitasLiquidadasOutrosMeses = receitasFiltradas.filter(row => {
+                const dataVenc = excelToDateLocal(row.VENCIMENTO, receitasIs1904);
+                const dataLiq = excelToDateLocal(row.LIQUIDAÇÃO, receitasIs1904);
+                
+                if (!dataVenc || !dataLiq) return false;
+                
+                // Verifica se a liquidação está no período mas o vencimento está fora
+                const liquidacaoNoPeriodo = dataLiq >= startDate && dataLiq <= endDate;
+                const vencimentoForaPeriodo = dataVenc < startDate || dataVenc > endDate;
+                
+                return liquidacaoNoPeriodo && vencimentoForaPeriodo;
+            });
+            
+            receitasLiquidadasOutrosMeses.forEach(row => {
+                totalLiquidadoOther += parseBrazilianNumber(row.VALOR);
+            });
+            
+            console.log('Receitas liquidadas de outros meses:', receitasLiquidadasOutrosMeses.length);
+            console.log('Total Liquidado Other:', totalLiquidadoOther);
+            
+            // ===== CÁLCULO DOS TOTAIS DE RECEITAS E DESPESAS =====
+            receitasFiltradas.forEach(row => {
+                const valor = parseBrazilianNumber(row.VALOR);
+                totalReceitas += valor;
+                if (companiesSummary[row.EMPRESA]) {
+                    companiesSummary[row.EMPRESA].totalReceitas += valor;
+                    companiesSummary[row.EMPRESA].saldo += valor;
+                }
+            });
+            
+            // ===== FILTRAGEM DE DESPESAS =====
+            console.log('\n--- Filtrando DESPESAS ---');
+            console.log('Total de registros de despesas:', despesasData.length);
+            
+            const despesasFiltradas = despesasData.filter((row, index) => {
+                const dataQuit = excelToDateLocal(row['QUITAÇÃO'], despesasIs1904);
+                
+                // Debug dos primeiros 5 registros
+                if (index < 5) {
+                    console.log(`Despesa ${index}:`, {
+                        credor: row['CREDOR/FORNECEDOR'],
+                        quitacao_serial: row['QUITAÇÃO'],
+                        quitacao_convertida: dataQuit,
+                        empresa: row.EMPRESA,
+                        selecionada: selectedCompanies.includes(row.EMPRESA),
+                        no_periodo: dataQuit && dataQuit >= startDate && dataQuit <= endDate
+                    });
+                }
+                
+                return dataQuit && 
+                       dataQuit >= startDate && 
+                       dataQuit <= endDate && 
+                       selectedCompanies.includes(row.EMPRESA);
+            });
+            
+            console.log('Despesas filtradas:', despesasFiltradas.length);
+            
+            despesasFiltradas.forEach(row => {
+                const valor = parseBrazilianNumber(row.VALOR);
+                totalDespesas += valor;
+                if (companiesSummary[row.EMPRESA]) {
+                    companiesSummary[row.EMPRESA].totalDespesas += valor;
+                    companiesSummary[row.EMPRESA].saldo -= valor;
+                }
+            });
+            
+            // ===== CÁLCULO DA LISTA DIÁRIA =====
+            console.log('\n--- Calculando lista diária ---');
+            
+            const listaDiaria = {};
+            
+            // Processar receitas por dia
+            receitasFiltradas.forEach(row => {
+                const dataLiq = excelToDateLocal(row.LIQUIDAÇÃO, receitasIs1904);
+                if (!dataLiq) return;
+                
+                const dataKey = dateToLocalString(dataLiq);
+                const valor = parseBrazilianNumber(row.VALOR);
+                
+                if (!listaDiaria[dataKey]) {
+                    listaDiaria[dataKey] = {
+                        data: new Date(dataLiq),
+                        receitas: 0,
+                        despesas: 0,
+                        saldo: 0,
+                        receitasDetalhes: [],
+                        despesasDetalhes: []
+                    };
+                }
+                
+                listaDiaria[dataKey].receitas += valor;
+                listaDiaria[dataKey].saldo += valor;
+                listaDiaria[dataKey].receitasDetalhes.push(row);
+            });
+            
+            // Processar despesas por dia
+            despesasFiltradas.forEach(row => {
+                const dataQuit = excelToDateLocal(row['QUITAÇÃO'], despesasIs1904);
+                if (!dataQuit) return;
+                
+                const dataKey = dateToLocalString(dataQuit);
+                const valor = parseBrazilianNumber(row.VALOR);
+                
+                if (!listaDiaria[dataKey]) {
+                    listaDiaria[dataKey] = {
+                        data: new Date(dataQuit),
+                        receitas: 0,
+                        despesas: 0,
+                        saldo: 0,
+                        receitasDetalhes: [],
+                        despesasDetalhes: []
+                    };
+                }
+                
+                listaDiaria[dataKey].despesas += valor;
+                listaDiaria[dataKey].saldo -= valor;
+                listaDiaria[dataKey].despesasDetalhes.push(row);
+            });
+            
+            console.log('Dias com movimentação:', Object.keys(listaDiaria).length);
+            
+            // Ordenar por data
+            const listaDiariaOrdenada = Object.values(listaDiaria).sort((a, b) => a.data - b.data);
+            
+            // ===== CÁLCULO DOS TOP 5 CLIENTES (CORRIGIDO) =====
+            console.log('\n--- Calculando top 5 clientes ---');
+            const clientesMap = new Map();
+            receitasFiltradas.forEach(row => {
+                const cliente = row.CLIENTE || 'Desconhecido';
+                const valor = parseBrazilianNumber(row.VALOR);
+                if (clientesMap.has(cliente)) {
+                    clientesMap.set(cliente, clientesMap.get(cliente) + valor);
+                } else {
+                    clientesMap.set(cliente, valor);
+                }
+            });
+            const topClientes = Array.from(clientesMap.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([cliente, total]) => ({cliente, total}));
+
+            // ===== CÁLCULO DOS TOP 5 CREDORES (CORRIGIDO) =====
+            console.log('\n--- Calculando top 5 credores ---');
+            const credoresMap = new Map();
+            despesasFiltradas.forEach(row => {
+                const credor = row['CREDOR/FORNECEDOR'] || 'Desconhecido';
+                const valor = parseBrazilianNumber(row.VALOR);
+                if (credoresMap.has(credor)) {
+                    credoresMap.set(credor, credoresMap.get(credor) + valor);
+                } else {
+                    credoresMap.set(credor, valor);
+                }
+            });
+            const topCredores = Array.from(credoresMap.entries())
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([credor, total]) => ({credor, total}));
+
+            // ===== RESULTADOS FINAIS =====
+            console.log('\n--- Resultados finais ---');
+            console.log('Total Receitas:', totalReceitas);
+            console.log('Total Despesas:', totalDespesas);
+            console.log('Total Faturado:', totalFaturado);
+            console.log('Inadimplência:', inadimplencia);
+            console.log('Liquidação no mesmo mês:', totalLiquidadoSame);
+            console.log('Liquidação de outros meses:', totalLiquidadoOther);
+            
+            const saldo = totalReceitas - totalDespesas;
+            const liquidez = totalReceitas > 0 ? (saldo / totalReceitas) * 100 : 0;
+            
+            return {
+                totalReceitas,
+                totalDespesas,
+                saldo,
+                liquidez,
+                totalFaturado,
+                inadimplencia,
+                totalLiquidadoSame,
+                totalLiquidadoOther,
+                listaDiaria: listaDiariaOrdenada,
+                receitasFiltradas,
+                despesasFiltradas,
+                receitasVencidasPeriodo,
+                receitasQuitadasPeriodo,
+                receitasLiquidadasOutrosMeses,
+                companiesSummary,
+                topClientes,
+                topCredores
+            };
+        }
+
+        function renderizarResultados(dados) {
+            renderizarBadgePeriodo();
+            renderizarCards(dados);
+            renderizarInsights(dados);
+            renderizarTopSummary(dados);
+            renderizarGrafico(dados);
+            renderizarListaDiaria(dados);
+        }
+
+        function renderizarBadgePeriodo() {
+            const badge = document.getElementById('periodBadge');
+            const start = currentPeriod.start;
+            const end = currentPeriod.end;
+            
+            const startStr = start.toLocaleDateString('pt-BR');
+            const endStr = end.toLocaleDateString('pt-BR');
+            
+            badge.textContent = `Período: ${startStr} a ${endStr}`;
+        }
+
+        function renderizarCards(dados) {
+            const cardsContainer = document.getElementById('summaryCards');
+            cardsContainer.innerHTML = '';
+
+            const cards = [
+                {
+                    title: 'Receitas',
+                    value: formatarMoeda(dados.totalReceitas),
+                    detail: 'Total de receitas no período',
+                    icon: '📈',
+                    class: 'card-receitas'
+                },
+                {
+                    title: 'Despesas',
+                    value: formatarMoeda(dados.totalDespesas),
+                    detail: 'Total de despesas no período',
+                    icon: '📉',
+                    class: 'card-despesas'
+                },
+                {
+                    title: 'Saldo',
+                    value: formatarMoeda(dados.saldo),
+                    detail: 'Saldo líquido (Receitas - Despesas)',
+                    icon: '💰',
+                    class: 'card-saldo'
+                },
+                {
+                    title: 'Margem de Liquidez',
+                    value: `${dados.liquidez.toFixed(2)}%`,
+                    detail: 'Saldo em relação às receitas',
+                    icon: '💧',
+                    class: 'card-liquidez'
+                },
+                {
+                    title: 'Títulos Emitidos',
+                    value: formatarMoeda(dados.totalFaturado),
+                    detail: 'Total de títulos emitidos na competência',
+                    icon: '📄',
+                    class: 'card-faturado'
+                },
+                {
+                    title: 'Inadimplência',
+                    value: formatarMoeda(dados.inadimplencia),
+                    detail: 'Títulos emitidos e não quitados na competência',
+                    icon: '⚠️',
+                    class: 'card-inadimplencia'
+                },
+                {
+                    title: 'Liquidação no Mesmo Mês',
+                    value: formatarMoeda(dados.totalLiquidadoSame),
+                    detail: 'Receitas da competência liquidadas no período',
+                    icon: '✅',
+                    class: 'card-liquidado-same'
+                },
+                {
+                    title: 'Liquidação de Outros Meses',
+                    value: formatarMoeda(dados.totalLiquidadoOther),
+                    detail: 'Receitas de outras competências liquidadas no período',
+                    icon: '🔄',
+                    class: 'card-liquidado-other'
+                }
+            ];
+
+            cards.forEach(card => {
+                const cardElement = document.createElement('div');
+                cardElement.className = `card ${card.class}`;
+                cardElement.innerHTML = `
+                    <div class="card-header">
+                        <div class="card-icon">${card.icon}</div>
+                        <div>
+                            <div class="card-title">${card.title}</div>
+                            <div class="card-value">${card.value}</div>
+                        </div>
+                    </div>
+                    <div class="card-detail">${card.detail}</div>
+                `;
+                cardsContainer.appendChild(cardElement);
+            });
+
+            // Atualizar também o modal
+            const modalCardsContainer = document.getElementById('modalSummaryCards');
+            modalCardsContainer.innerHTML = cardsContainer.innerHTML;
+        }
+
+        function renderizarInsights(dados) {
+            const insightsContainer = document.getElementById('insightsSection');
+            insightsContainer.innerHTML = '<h3>💡 Insights e Análises</h3>';
+
+            const insights = [];
+
+            // Análise de saldo
+            if (dados.saldo > 0) {
+                insights.push(`<div class="insight-item">O fluxo de caixa apresentou <strong>superávit</strong> de ${formatarMoeda(dados.saldo)} no período.</div>`);
+            } else if (dados.saldo < 0) {
+                insights.push(`<div class="insight-item">O fluxo de caixa apresentou <strong>déficit</strong> de ${formatarMoeda(Math.abs(dados.saldo))} no período.</div>`);
+            } else {
+                insights.push(`<div class="insight-item">O fluxo de caixa apresentou <strong>equilíbrio</strong> no período.</div>`);
+            }
+
+            // Análise de liquidez
+            if (dados.liquidez > 20) {
+                insights.push(`<div class="insight-item">A <strong>margem de liquidez</strong> está saudável em ${dados.liquidez.toFixed(2)}%.</div>`);
+            } else if (dados.liquidez > 0) {
+                insights.push(`<div class="insight-item">A <strong>margem de liquidez</strong> está moderada em ${dados.liquidez.toFixed(2)}%.</div>`);
+            } else {
+                insights.push(`<div class="insight-item">A <strong>margem de liquidez</strong> está negativa em ${dados.liquidez.toFixed(2)}%, indicando prejuízo.</div>`);
+            }
+
+            // Análise de títulos emitidos
+            insights.push(`<div class="insight-item">Foram emitidos <strong>${dados.receitasVencidasPeriodo.length} títulos</strong> na competência, totalizando ${formatarMoeda(dados.totalFaturado)}.</div>`);
+
+            // Análise de inadimplência - CORRIGIDA
+            if (dados.inadimplencia > 0) {
+                const percentualInadimplencia = dados.totalFaturado > 0 ? (dados.inadimplencia / dados.totalFaturado) * 100 : 0;
+                insights.push(`<div class="insight-item">A <strong>inadimplência</strong> representa ${percentualInadimplencia.toFixed(2)}% do faturamento da competência (${dados.receitasVencidasPeriodo.length - dados.receitasQuitadasPeriodo.length} títulos não quitados).</div>`);
+                
+                if (percentualInadimplencia > 10) {
+                    insights.push(`<div class="insight-item"><strong>Atenção:</strong> A inadimplência está acima de 10%, indicando necessidade de revisão da política de cobrança.</div>`);
+                }
+            } else {
+                insights.push(`<div class="insight-item">Não há <strong>inadimplência</strong> identificada na competência.</div>`);
+            }
+
+            // Análise de liquidação
+            if (dados.totalLiquidadoSame > 0) {
+                const percentualSame = dados.totalFaturado > 0 ? (dados.totalLiquidadoSame / dados.totalFaturado) * 100 : 0;
+                insights.push(`<div class="insight-item">${percentualSame.toFixed(2)}% das receitas da competência foram liquidadas no período.</div>`);
+            }
+
+            // Análise de liquidação de outros meses
+            if (dados.totalLiquidadoOther > 0) {
+                const percentualOther = dados.totalReceitas > 0 ? (dados.totalLiquidadoOther / dados.totalReceitas) * 100 : 0;
+                insights.push(`<div class="insight-item">${percentualOther.toFixed(2)}% das receitas liquidadas são de <strong>outras competências</strong> (${dados.receitasLiquidadasOutrosMeses.length} títulos).</div>`);
+            }
+
+            // Análise de eficiência de cobrança
+            const eficienciaCobranca = dados.totalFaturado > 0 ? 
+                ((dados.totalFaturado - dados.inadimplencia) / dados.totalFaturado) * 100 : 0;
+            insights.push(`<div class="insight-item">A <strong>eficiência de cobrança</strong> foi de ${eficienciaCobranca.toFixed(2)}% na competência.</div>`);
+
+            insightsContainer.innerHTML += insights.join('');
+        }
+
+        function renderizarTopSummary(dados) {
+            const topContainer = document.getElementById('topSummary');
+            topContainer.innerHTML = '';
+
+            // Card para Top 5 Clientes
+            const clientCard = document.createElement('div');
+            clientCard.className = 'card card-receitas';
+            clientCard.innerHTML = `
+                <div class="card-header">
+                    <div class="card-icon">👥</div>
+                    <div>
+                        <div class="card-title">Top 5 Clientes</div>
+                    </div>
+                </div>
+                <ul class="top-list">
+                    ${dados.topClientes.length > 0 ? dados.topClientes.map(c => `<li class="top-item"><span>${c.cliente}</span><span>${formatarMoeda(c.total)}</span></li>`).join('') : '<li class="top-item"><span>Nenhum cliente encontrado</span><span>R$ 0,00</span></li>'}
+                </ul>
+                <div class="card-detail">Clientes mais representativos em receitas</div>
+            `;
+            topContainer.appendChild(clientCard);
+
+            // Card para Top 5 Credores
+            const credorCard = document.createElement('div');
+            credorCard.className = 'card card-despesas';
+            credorCard.innerHTML = `
+                <div class="card-header">
+                    <div class="card-icon">🏢</div>
+                    <div>
+                        <div class="card-title">Top 5 Credores</div>
+                    </div>
+                </div>
+                <ul class="top-list">
+                    ${dados.topCredores.length > 0 ? dados.topCredores.map(c => `<li class="top-item"><span>${c.credor}</span><span>${formatarMoeda(c.total)}</span></li>`).join('') : '<li class="top-item"><span>Nenhum credor encontrado</span><span>R$ 0,00</span></li>'}
+                </ul>
+                <div class="card-detail">Credores mais representativos em despesas</div>
+            `;
+            topContainer.appendChild(credorCard);
+        }
+
+        function renderizarGrafico(dados) {
+            const ctx = document.getElementById('flowChart').getContext('2d');
+
+            if (chartInstance) {
+                chartInstance.destroy();
+            }
+
+            const labels = dados.listaDiaria.map(item => item.data.toLocaleDateString('pt-BR'));
+            const receitas = dados.listaDiaria.map(item => item.receitas);
+            const despesas = dados.listaDiaria.map(item => item.despesas);
+            const saldos = dados.listaDiaria.map(item => item.saldo);
+
+            chartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Receitas',
+                            data: receitas,
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: 'Despesas',
+                            data: despesas,
+                            borderColor: '#dc3545',
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        },
+                        {
+                            label: 'Saldo',
+                            data: saldos,
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4,
+                            fill: false
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: 'Evolução Diária do Fluxo de Caixa'
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Data'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Valor (R$)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderizarListaDiaria(dados) {
+            const listaContainer = document.getElementById('dailyList');
+            listaContainer.innerHTML = '<h3>📅 Lista Diária de Movimentações</h3>';
+
+            if (dados.listaDiaria.length === 0) {
+                listaContainer.innerHTML += '<p>Não há movimentações no período selecionado.</p>';
+                return;
+            }
+
+            dados.listaDiaria.forEach(item => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'daily-item';
+                itemElement.onclick = () => abrirModalDetalhes(item);
+
+                itemElement.innerHTML = `
+                    <div class="daily-item-header">
+                        <div class="daily-date">${item.data.toLocaleDateString('pt-BR')}</div>
+                        <div class="daily-saldo ${item.saldo >= 0 ? 'value-positive' : 'value-negative'}">
+                            ${formatarMoeda(item.saldo)}
+                        </div>
+                    </div>
+                    <div class="daily-values">
+                        <div class="daily-value-item">
+                            <div class="daily-value-label">Receitas</div>
+                            <div class="daily-value-amount value-positive">${formatarMoeda(item.receitas)}</div>
+                        </div>
+                        <div class="daily-value-item">
+                            <div class="daily-value-label">Despesas</div>
+                            <div class="daily-value-amount value-negative">${formatarMoeda(item.despesas)}</div>
+                        </div>
+                        <div class="daily-value-item">
+                            <div class="daily-value-label">Saldo</div>
+                            <div class="daily-value-amount ${item.saldo >= 0 ? 'value-positive' : 'value-negative'}">${formatarMoeda(item.saldo)}</div>
+                        </div>
+                    </div>
+                `;
+                listaContainer.appendChild(itemElement);
+            });
+
+            // Atualizar também o modal
+            const modalListContainer = document.getElementById('modalDailyList');
+            modalListContainer.innerHTML = listaContainer.innerHTML;
+        }
+
+        function abrirModalDetalhes(item) {
+            currentDailyItem = item; // Armazenar o item atual
+            const modal = document.getElementById('dailyModal');
+            const modalSummary = document.getElementById('modalDailySummary');
+            const receitasTable = document.getElementById('receitasTable').querySelector('tbody');
+            const despesasTable = document.getElementById('despesasTable').querySelector('tbody');
+
+            // Limpar tabelas
+            receitasTable.innerHTML = '';
+            despesasTable.innerHTML = '';
+
+            // Atualizar resumo
+            modalSummary.innerHTML = `
+                <div class="pdf-header">
+                    <h2>Detalhes do Dia: ${item.data.toLocaleDateString('pt-BR')}</h2>
+                    <div class="summary-cards">
+                        <div class="card card-receitas">
+                            <div class="card-header">
+                                <div class="card-icon">📈</div>
+                                <div>
+                                    <div class="card-title">Receitas</div>
+                                    <div class="card-value">${formatarMoeda(item.receitas)}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card card-despesas">
+                            <div class="card-header">
+                                <div class="card-icon">📉</div>
+                                <div>
+                                    <div class="card-title">Despesas</div>
+                                    <div class="card-value">${formatarMoeda(item.despesas)}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card card-saldo">
+                            <div class="card-header">
+                                <div class="card-icon">💰</div>
+                                <div>
+                                    <div class="card-title">Saldo</div>
+                                    <div class="card-value ${item.saldo >= 0 ? 'value-positive' : 'value-negative'}">${formatarMoeda(item.saldo)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Preencher tabela de receitas
+            item.receitasDetalhes.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.CLIENTE || ''}</td>
+                    <td>${row.DESCRIÇÃO || ''}</td>
+                    <td>${formatarDataExcel(row.VENCIMENTO, receitasIs1904)}</td>
+                    <td>${formatarDataExcel(row.LIQUIDAÇÃO, receitasIs1904)}</td>
+                    <td>${formatarMoeda(parseBrazilianNumber(row.VALOR))}</td>
+                    <td>${row.EMPRESA || ''}</td>
+                    <td>${row.VENDEDOR || ''}</td>
+                `;
+                receitasTable.appendChild(tr);
+            });
+
+            // Preencher tabela de despesas
+            item.despesasDetalhes.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row['CREDOR/FORNECEDOR'] || ''}</td>
+                    <td>${row.DESCRIÇÃO || ''}</td>
+                    <td>${formatarDataExcel(row.VENCTO, despesasIs1904)}</td>
+                    <td>${formatarDataExcel(row['QUITAÇÃO'], despesasIs1904)}</td>
+                    <td>${formatarMoeda(parseBrazilianNumber(row.VALOR))}</td>
+                    <td>${row.EMPRESA || ''}</td>
+                    <td>${row.NATUREZA || ''}</td>
+                `;
+                despesasTable.appendChild(tr);
+            });
+
+            modal.style.display = 'block';
+        }
+
+        function formatarDataExcel(serial, is1904 = false) {
+            const date = excelToDateLocal(serial, is1904);
+            return date ? date.toLocaleDateString('pt-BR') : '';
+        }
+
+        function formatarMoeda(valor) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(valor);
+        }
+
+        // Event Listeners para os botões
+        document.getElementById('viewCardsModalBtn').addEventListener('click', () => {
+            document.getElementById('cardsModal').style.display = 'block';
+        });
+
+        document.getElementById('exportCardsPdfBtn').addEventListener('click', () => {
+            gerarPDF('cards');
+        });
+
+        document.getElementById('exportDailyPdfBtn').addEventListener('click', () => {
+            gerarPDF('daily');
+        });
+
+        document.getElementById('previewPdfBtn').addEventListener('click', () => {
+            gerarPDF('global', true);
+        });
+
+        document.getElementById('exportPdfBtn').addEventListener('click', () => {
+            gerarPDF('global');
+        });
+
+        document.getElementById('downloadPreviewPdfBtn').addEventListener('click', () => {
+            const iframe = document.getElementById('pdfPreview');
+            const link = document.createElement('a');
+            link.href = iframe.src;
+            link.download = 'relatorio_fluxo_caixa.pdf';
+            link.click();
+        });
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).style.display = 'none';
+        }
+
+        // Função para gerar PDF - OTIMIZADA COM CONSTRUÇÃO PROGRAMÁTICA
+        function gerarPDF(tipo, preview = false) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('l', 'mm', 'a4'); // Landscape
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            const margin = 10;
+            let y = margin;
+
+            let filename = '';
+
+            if (tipo === 'cards') {
+                filename = 'resumo_fluxo_caixa.pdf';
+                y = adicionarCabecalho(doc, y, 'Resumo de Fluxo de Caixa', pageWidth, margin);
+                if (selectedCompanies.length > 1) {
+                    y = adicionarResumoEmpresas(doc, y, currentDados.companiesSummary, pageWidth, margin);
+                    if (y > pageHeight - margin * 2) {
+                        doc.addPage();
+                        y = margin;
+                    }
+                }
+                y = adicionarResumoCards(doc, y, currentDados, pageWidth, margin);
+            } else if (tipo === 'daily') {
+                filename = 'detalhe_diario.pdf';
+                if (!currentDailyItem) {
+                    alert('Nenhum dia selecionado.');
+                    return;
+                }
+                y = adicionarCabecalho(doc, y, `Detalhes do Dia: ${currentDailyItem.data.toLocaleDateString('pt-BR')}`, pageWidth, margin);
+                if (selectedCompanies.length > 1) {
+                    const dailySummary = calcularDailyCompaniesSummary(currentDailyItem);
+                    y = adicionarResumoEmpresas(doc, y, dailySummary, pageWidth, margin);
+                    if (y > pageHeight - margin * 2) {
+                        doc.addPage();
+                        y = margin;
+                    }
+                }
+                y = adicionarResumoDiario(doc, y, currentDailyItem, pageWidth, margin);
+                y = adicionarTabela(doc, y, 'Registros de Receitas', getReceitasTableData(currentDailyItem.receitasDetalhes), pageWidth, margin);
+                if (y > pageHeight - margin * 2) {
+                    doc.addPage();
+                    y = margin;
+                }
+                y = adicionarTabela(doc, y, 'Registros de Despesas', getDespesasTableData(currentDailyItem.despesasDetalhes), pageWidth, margin);
+            } else if (tipo === 'global') {
+                filename = 'relatorio_completo_fluxo_caixa.pdf';
+                y = adicionarCabecalho(doc, y, 'Relatório de Fluxo de Caixa', pageWidth, margin);
+                doc.text(document.getElementById('periodBadge').textContent, pageWidth / 2, y, { align: 'center' });
+                y += 10;
+                if (selectedCompanies.length > 1) {
+                    y = adicionarResumoEmpresas(doc, y, currentDados.companiesSummary, pageWidth, margin);
+                    if (y > pageHeight - margin * 2) {
+                        doc.addPage();
+                        y = margin;
+                    }
+                }
+                y = adicionarResumoCards(doc, y, currentDados, pageWidth, margin);
+                if (y > pageHeight - margin * 2) {
+                    doc.addPage();
+                    y = margin;
+                }
+                y = adicionarInsights(doc, y, currentDados, pageWidth, margin);
+                if (y > pageHeight - margin * 2) {
+                    doc.addPage();
+                    y = margin;
+                }
+                y = adicionarListaDiaria(doc, y, currentDados.listaDiaria, pageWidth, margin);
+            }
+
+            if (preview) {
+                const pdfBlob = doc.output('blob');
+                const pdfUrl = URL.createObjectURL(pdfBlob);
+                document.getElementById('pdfPreview').src = pdfUrl;
+                document.getElementById('pdfPreviewModal').style.display = 'block';
+            } else {
+                doc.save(filename);
+            }
+        }
+
+        function calcularDailyCompaniesSummary(item) {
+            let dailySummary = selectedCompanies.reduce((acc, emp) => {
+                acc[emp] = { totalReceitas: 0, totalDespesas: 0, saldo: 0 };
+                return acc;
+            }, {});
+
+            item.receitasDetalhes.forEach(row => {
+                const valor = parseBrazilianNumber(row.VALOR);
+                if (dailySummary[row.EMPRESA]) {
+                    dailySummary[row.EMPRESA].totalReceitas += valor;
+                    dailySummary[row.EMPRESA].saldo += valor;
+                }
+            });
+
+            item.despesasDetalhes.forEach(row => {
+                const valor = parseBrazilianNumber(row.VALOR);
+                if (dailySummary[row.EMPRESA]) {
+                    dailySummary[row.EMPRESA].totalDespesas += valor;
+                    dailySummary[row.EMPRESA].saldo -= valor;
+                }
+            });
+
+            return dailySummary;
+        }
+
+        // Funções auxiliares para adicionar conteúdo ao PDF
+        function adicionarCabecalho(doc, y, titulo, pageWidth, margin) {
+            doc.setFontSize(18);
+            doc.setTextColor(102, 126, 234);
+            doc.text(titulo, pageWidth / 2, y, { align: 'center' });
+            y += 15;
+            doc.setLineWidth(0.5);
+            doc.setDrawColor(102, 126, 234);
+            doc.line(margin, y, pageWidth - margin, y);
+            y += 10;
+            return y;
+        }
+
+        function adicionarResumoEmpresas(doc, y, companiesSummary, pageWidth, margin) {
+            doc.setFontSize(14);
+            doc.setTextColor(102, 126, 234);
+            doc.text('Resumo Sintético por Empresa', margin, y);
+            y += 10;
+
+            const summaryData = Object.entries(companiesSummary).map(([emp, data]) => [
+                emp,
+                formatarMoeda(data.totalReceitas),
+                formatarMoeda(data.totalDespesas),
+                formatarMoeda(data.saldo)
+            ]);
+
+            doc.autoTable({
+                startY: y,
+                head: [['Empresa', 'Receitas', 'Despesas', 'Saldo']],
+                body: summaryData,
+                theme: 'grid',
+                styles: { fillColor: [248, 249, 250], textColor: [51, 51, 51], lineColor: [221, 221, 221], lineWidth: 0.1 },
+                headStyles: { fillColor: [102, 126, 234], textColor: [255, 255, 255] }
+            });
+
+            return doc.lastAutoTable.finalY + 10;
+        }
+
+        function adicionarResumoCards(doc, y, dados, pageWidth, margin) {
+            doc.setFontSize(14);
+            doc.setTextColor(102, 126, 234);
+            doc.text('Resumo Financeiro', margin, y);
+            y += 10;
+
+            const cardsData = [
+                ['Receitas', formatarMoeda(dados.totalReceitas)],
+                ['Despesas', formatarMoeda(dados.totalDespesas)],
+                ['Saldo', formatarMoeda(dados.saldo)],
+                ['Margem de Liquidez', `${dados.liquidez.toFixed(2)}%`],
+                ['Títulos Emitidos', formatarMoeda(dados.totalFaturado)],
+                ['Inadimplência', formatarMoeda(dados.inadimplencia)],
+                ['Liquidação do Mesmo Mês', formatarMoeda(dados.totalLiquidadoSame)],
+                ['Liquidação de Outros Meses', formatarMoeda(dados.totalLiquidadoOther)]
+            ];
+
+            doc.autoTable({
+                startY: y,
+                head: [['Indicador', 'Valor']],
+                body: cardsData,
+                theme: 'grid',
+                styles: { fillColor: [248, 249, 250], textColor: [51, 51, 51], lineColor: [221, 221, 221], lineWidth: 0.1 },
+                headStyles: { fillColor: [102, 126, 234], textColor: [255, 255, 255] },
+                columnStyles: { 0: { cellWidth: (pageWidth - margin * 2) / 2 }, 1: { cellWidth: (pageWidth - margin * 2) / 2 } }
+            });
+
+            return doc.lastAutoTable.finalY + 10;
+        }
+
+        function adicionarInsights(doc, y, dados, pageWidth, margin) {
+            doc.setFontSize(14);
+            doc.setTextColor(102, 126, 234);
+            doc.text('Insights e Análises', margin, y);
+            y += 10;
+
+            const insightsContainer = document.getElementById('insightsSection');
+            const insightItems = insightsContainer.querySelectorAll('.insight-item');
+            let insightsText = [];
+            insightItems.forEach(item => {
+                insightsText.push(item.textContent.trim());
+            });
+
+            insightsText.forEach(text => {
+                const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
+                doc.setFontSize(10);
+                doc.setTextColor(51, 51, 51);
+                doc.text(lines, margin, y);
+                y += lines.length * 7; // Espaçamento aproximado
+                if (y > doc.internal.pageSize.height - margin) {
+                    doc.addPage();
+                    y = margin;
+                }
+            });
+
+            return y + 10;
+        }
+
+        function adicionarListaDiaria(doc, y, listaDiaria, pageWidth, margin) {
+            doc.setFontSize(14);
+            doc.setTextColor(102, 126, 234);
+            doc.text('Lista Diária de Movimentações', margin, y);
+            y += 10;
+
+            const tableData = listaDiaria.map(item => [
+                item.data.toLocaleDateString('pt-BR'),
+                formatarMoeda(item.receitas),
+                formatarMoeda(item.despesas),
+                formatarMoeda(item.saldo)
+            ]);
+
+            doc.autoTable({
+                startY: y,
+                head: [['Data', 'Receitas', 'Despesas', 'Saldo']],
+                body: tableData,
+                theme: 'grid',
+                styles: { fillColor: [248, 249, 250], textColor: [51, 51, 51], lineColor: [221, 221, 221], lineWidth: 0.1 },
+                headStyles: { fillColor: [102, 126, 234], textColor: [255, 255, 255] }
+            });
+
+            return doc.lastAutoTable.finalY + 10;
+        }
+
+        function adicionarResumoDiario(doc, y, item, pageWidth, margin) {
+            doc.setFontSize(14);
+            doc.setTextColor(102, 126, 234);
+            doc.text('Resumo do Dia', margin, y);
+            y += 10;
+
+            const resumoData = [
+                ['Receitas', formatarMoeda(item.receitas)],
+                ['Despesas', formatarMoeda(item.despesas)],
+                ['Saldo', formatarMoeda(item.saldo)]
+            ];
+
+            doc.autoTable({
+                startY: y,
+                head: [['Indicador', 'Valor']],
+                body: resumoData,
+                theme: 'grid',
+                styles: { fillColor: [248, 249, 250], textColor: [51, 51, 51], lineColor: [221, 221, 221], lineWidth: 0.1 },
+                headStyles: { fillColor: [102, 126, 234], textColor: [255, 255, 255] },
+                columnStyles: { 0: { cellWidth: (pageWidth - margin * 2) / 2 }, 1: { cellWidth: (pageWidth - margin * 2) / 2 } }
+            });
+
+            return doc.lastAutoTable.finalY + 10;
+        }
+
+        function adicionarTabela(doc, y, titulo, data, pageWidth, margin) {
+            doc.setFontSize(14);
+            doc.setTextColor(102, 126, 234);
+            doc.text(titulo, margin, y);
+            y += 10;
+
+            if (data.body.length === 0) {
+                doc.setFontSize(10);
+                doc.setTextColor(51, 51, 51);
+                doc.text('Nenhum registro encontrado.', margin, y);
+                return y + 10;
+            }
+
+            doc.autoTable({
+                startY: y,
+                head: [data.head],
+                body: data.body,
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak', halign: 'left', valign: 'middle', fillColor: [248, 249, 250], textColor: [51, 51, 51], lineColor: [221, 221, 221], lineWidth: 0.1 },
+                headStyles: { fillColor: [102, 126, 234], textColor: [255, 255, 255], fontSize: 9 },
+                columnStyles: data.columnStyles
+            });
+
+            return doc.lastAutoTable.finalY + 10;
+        }
+
+        function getReceitasTableData(detalhes) {
+            const head = ['Cliente', 'Descrição', 'Vencimento', 'Liquidação', 'Valor', 'Empresa', 'Vendedor'];
+            const body = detalhes.map(row => [
+                row.CLIENTE || '',
+                row.DESCRIÇÃO || '',
+                formatarDataExcel(row.VENCIMENTO, receitasIs1904),
+                formatarDataExcel(row.LIQUIDAÇÃO, receitasIs1904),
+                formatarMoeda(parseBrazilianNumber(row.VALOR)),
+                row.EMPRESA || '',
+                row.VENDEDOR || ''
+            ]);
+            const columnStyles = {};
+            head.forEach((_, index) => {
+                columnStyles[index] = { cellWidth: 'wrap' };
+            });
+            return { head, body, columnStyles };
+        }
+
+        function getDespesasTableData(detalhes) {
+            const head = ['Credor/Fornecedor', 'Descrição', 'Vencimento', 'Quitação', 'Valor', 'Empresa', 'Natureza'];
+            const body = detalhes.map(row => [
+                row['CREDOR/FORNECEDOR'] || '',
+                row.DESCRIÇÃO || '',
+                formatarDataExcel(row.VENCTO, despesasIs1904),
+                formatarDataExcel(row['QUITAÇÃO'], despesasIs1904),
+                formatarMoeda(parseBrazilianNumber(row.VALOR)),
+                row.EMPRESA || '',
+                row.NATUREZA || ''
+            ]);
+            const columnStyles = {};
+            head.forEach((_, index) => {
+                columnStyles[index] = { cellWidth: 'wrap' };
+            });
+            return { head, body, columnStyles };
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            // Definir datas padrão
+            const now = new Date();
+            const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+            const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            
+            document.getElementById('monthFilter').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+            document.getElementById('startDate').value = dateToLocalString(firstDay);
+            document.getElementById('endDate').value = dateToLocalString(lastDay);
+        });
+    </script>
+</body>
+</html>
